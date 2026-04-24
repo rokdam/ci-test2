@@ -1,5 +1,5 @@
-name: NestJS CI Build
-run-name: ${{ github.actor }} is running CI build 🚀
+name: NestJS CI/CD
+run-name: ${{ github.actor }} is running CI/CD 🚀
 on: [push] #push 이벤트일때 작동
 jobs:
   Build:
@@ -24,3 +24,46 @@ jobs:
 
       - name: Print build status
         run: echo "✅ Build completed successfully!"
+
+  Deploy:
+    needs: Build
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main' # main 브랜치에만 배포
+    steps:
+      - name: Check out repository code
+        uses: actions/checkout@v5
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+
+      - name: Install dependencies
+        run: npm install
+
+      - name: Build project
+        run: npm run build
+
+      - name: Create SSH key file
+        run: |
+          mkdir -p ~/.ssh
+          echo "${{ secrets.EC2_SSH_KEY }}" > ~/.ssh/ci-sample.pem
+          chmod 600 ~/.ssh/ci-sample.pem
+
+      - name: Copy dist directory to EC2
+        run: |
+          scp -i ~/.ssh/ci-sample.pem -r ${{ github.workspace }}/dist ec2-user@${{ secrets.EC2_PUBLIC_IP }}:~/sample-server/
+
+      - name: Copy config files to EC2
+        run: |
+          scp -i ~/.ssh/ci-sample.pem ${{ github.workspace }}/package.json ${{ github.workspace }}/tsconfig.json ${{ github.workspace }}/tsconfig.build.json ec2-user@${{ secrets.EC2_PUBLIC_IP }}:~/sample-server/
+
+      - name: Install dependencies and start app on EC2
+        run: |
+          ssh -i ~/.ssh/ci-sample.pem ec2-user@${{ secrets.EC2_PUBLIC_IP }} << 'EOF'
+            cd ~/sample-server
+            npm install
+            pm2 stop all || true
+            pm2 start dist/main.js --name "sample-server"
+            echo "✅ Deployment completed successfully!"
+          EOF
