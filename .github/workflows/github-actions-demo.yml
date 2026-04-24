@@ -52,15 +52,15 @@ jobs:
 
       - name: Copy dist directory to EC2
         run: |
-          scp -i ~/.ssh/ci-sample.pem -r ${{ github.workspace }}/dist ec2-user@${{ secrets.EC2_PUBLIC_IP }}:~/sample-server/
+          scp -i ~/.ssh/ci-sample.pem -o StrictHostKeyChecking=no -r ${{ github.workspace }}/dist ec2-user@${{ secrets.EC2_PUBLIC_IP }}:~/sample-server/
 
       - name: Copy config files to EC2
         run: |
-          scp -i ~/.ssh/ci-sample.pem ${{ github.workspace }}/package.json ${{ github.workspace }}/tsconfig.json ${{ github.workspace }}/tsconfig.build.json ec2-user@${{ secrets.EC2_PUBLIC_IP }}:~/sample-server/
+          scp -i ~/.ssh/ci-sample.pem -o StrictHostKeyChecking=no ${{ github.workspace }}/package.json ${{ github.workspace }}/tsconfig.json ${{ github.workspace }}/tsconfig.build.json ec2-user@${{ secrets.EC2_PUBLIC_IP }}:~/sample-server/
 
       - name: Install dependencies and start app on EC2
         run: |
-          ssh -i ~/.ssh/ci-sample.pem ec2-user@${{ secrets.EC2_PUBLIC_IP }} << 'EOF'
+          ssh -i ~/.ssh/ci-sample.pem -o StrictHostKeyChecking=no ec2-user@${{ secrets.EC2_PUBLIC_IP }} << 'EOF'
             cd ~/sample-server
             npm install
             pm2 stop all || true
